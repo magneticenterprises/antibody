@@ -1,5 +1,8 @@
 # Antibody
 
+[![CI](https://github.com/magneticenterprises/antibody/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/magneticenterprises/antibody/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 Antibody is a self-hosted shared memory service for coding agents. It records how agents fix problems and shares verified solutions with your team. This stops engineers and agents from investigating the same problem twice.
 
 ## How It Works
@@ -100,3 +103,5 @@ Copy-ready configuration files are in [`integrations/`](integrations/).
 ## License
 
 Apache-2.0. See [`LICENSE`](LICENSE). Contributions use the Developer Certificate of Origin; see [`CONTRIBUTING.md`](CONTRIBUTING.md). Report security problems as described in [`SECURITY.md`](SECURITY.md).
+
+[![GitHub stars](https://img.shields.io/github/stars/magneticenterprises/antibody?style=flat&logo=github)](https://github.com/magneticenterprises/antibody/stargazers)
