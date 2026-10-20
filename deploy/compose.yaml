@@ -1,0 +1,94 @@
+# Antibody: four containers (spec section 4).
+#
+#   postgres  PostgreSQL 18 with pgvector (not published to the host)
+#   api       Rust HTTP API + MCP server (not published; reached through web)
+#   worker    Rust background worker (extraction, embeddings, retention)
+#   web       Caddy serving the static React UI and proxying /v1 and /mcp
+#
+# Quick start (from the repository root):
+#   cp deploy/env.example deploy/.env      # then edit the secrets
+#   docker compose -f deploy/compose.yaml up -d --build
+#
+# Configuration comes from deploy/.env (gitignored); see deploy/env.example.
+name: antibody
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg18-trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: antibody
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: antibody
+    volumes:
+      # PostgreSQL 18 images keep the cluster in a versioned directory below
+      # /var/lib/postgresql, so mount the parent.
+      - antibody-pg:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U antibody -d antibody"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    # Deliberately no `ports:`: PostgreSQL is reachable only on the compose network.
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: antibody:local
+    restart: unless-stopped
+    command: ["antibody-api", "serve"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://antibody:${POSTGRES_PASSWORD}@postgres:5432/antibody
+      ANTIBODY_BIND: 0.0.0.0:8080
+      # The API sits behind Caddy: trust its X-Forwarded-For / X-Forwarded-Proto.
+      ANTIBODY_TRUST_PROXY: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Deliberately no `ports:`: all traffic enters through the web container.
+
+  worker:
+    image: antibody:local
+    restart: unless-stopped
+    command: ["antibody-worker"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://antibody:${POSTGRES_PASSWORD}@postgres:5432/antibody
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    image: antibody-web:local
+    restart: unless-stopped
+    environment:
+      ANTIBODY_SITE_ADDRESS: ${ANTIBODY_SITE_ADDRESS:-:8080}
+    ports:
+      # Loopback by default. Set ANTIBODY_HTTP_BIND=0.0.0.0 to serve a trusted
+      # LAN over HTTP, or use deploy/compose.tls.yaml for a public HTTPS domain.
+      - "${ANTIBODY_HTTP_BIND:-127.0.0.1}:${ANTIBODY_HTTP_PORT:-8080}:8080"
+    volumes:
+      - antibody-caddy-data:/data
+      - antibody-caddy-config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/v1/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  antibody-pg:
+  antibody-caddy-data:
+  antibody-caddy-config:

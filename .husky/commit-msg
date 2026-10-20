@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+set -eu
+exec node scripts/git-hooks/check-commit-message.mjs "$1"

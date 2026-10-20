@@ -1,0 +1,33 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://antibody.example.com/v1/hooks/user-prompt-submit",
+            "timeout": 5,
+            "headers": {
+              "Authorization": "Bearer $ANTIBODY_TOKEN",
+              "X-Antibody-Repository": "acme/api"
+            },
+            "allowedEnvVars": [
+              "ANTIBODY_TOKEN"
+            ]
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "antibody hook session-end --agent claude-code",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

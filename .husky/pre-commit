@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+set -eu
+exec node scripts/git-hooks/run-git-hook.mjs pre-commit

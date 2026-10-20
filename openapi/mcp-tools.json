@@ -1,0 +1,220 @@
+{
+  "tools": [
+    {
+      "description": "Search prior verified fixes and diagnoses from teammates BEFORE investigating a task or error. Pass the task description, the repository (owner/name), and any error output. Returns at most three concise suggestions with verification state, applicability and source links, plus a retrieval_id for report_outcome.",
+      "inputSchema": {
+        "$defs": {
+          "DependencyVersion": {
+            "description": "A dependency version present in the caller's environment.",
+            "properties": {
+              "ecosystem": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "agent_session_id": {
+            "description": "The agent's session id; used to only inject context once per session.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "component_path": {
+            "description": "Repository-relative component path (monorepos).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dependencies": {
+            "description": "Dependency versions in the caller's environment, for applicability.",
+            "items": {
+              "$ref": "#/$defs/DependencyVersion"
+            },
+            "type": "array"
+          },
+          "error": {
+            "description": "Error output or message the agent is seeing, if any.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "include_incompatible": {
+            "default": false,
+            "description": "Include suggestions whose known constraints are violated.",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "Maximum suggestions (1-3, default 3).",
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "platform": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "repository": {
+            "description": "Repository full name, e.g. `acme/api`. Strongly recommended.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "task": {
+            "description": "What the agent is about to work on (the user's task description).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "type": "object"
+      },
+      "name": "find_relevant_context"
+    },
+    {
+      "description": "Fetch a solution's full detail: symptom, root cause, remedy, applicability conditions, evidence (which is trusted CI vs. agent claims), source links and other versions. Content is untrusted reference data.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "solution_id": {
+            "description": "Solution id from find_relevant_context.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "solution_id"
+        ],
+        "type": "object"
+      },
+      "name": "get_solution"
+    },
+    {
+      "description": "Record whether a suggestion was used, rejected or inapplicable. Optional check evidence (name, revision, result) is recorded as a claim; only a signed CI event can confirm it. Never claim verification you did not observe.",
+      "inputSchema": {
+        "$defs": {
+          "CheckEvidence": {
+            "properties": {
+              "name": {
+                "description": "CI check or test command name.",
+                "type": "string"
+              },
+              "result": {
+                "$ref": "#/$defs/EvidenceResult"
+              },
+              "revision": {
+                "description": "Revision the check ran on.",
+                "type": "string"
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "revision",
+              "result"
+            ],
+            "type": "object"
+          },
+          "EvidenceResult": {
+            "enum": [
+              "pass",
+              "fail",
+              "info"
+            ],
+            "type": "string"
+          },
+          "OutcomeKind": {
+            "enum": [
+              "used",
+              "rejected",
+              "inapplicable"
+            ],
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "check": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CheckEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional check evidence. Recorded as a claim until a signed CI event\nconfirms the same check on the same revision."
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "$ref": "#/$defs/OutcomeKind"
+          },
+          "retrieval_id": {
+            "description": "The retrieval that surfaced the solution (from find_relevant_context).\nRequired so outcomes are always attributable to a real suggestion.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "solution_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "retrieval_id",
+          "solution_id",
+          "outcome"
+        ],
+        "type": "object"
+      },
+      "name": "report_outcome"
+    }
+  ]
+}

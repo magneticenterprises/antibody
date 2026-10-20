@@ -1,0 +1,22 @@
+# Merge into ~/.codex/config.toml or <repo>/.codex/config.toml.
+# Codex lifecycle hooks are behind a feature flag (verified on codex-cli 0.163.0).
+# Requires ANTIBODY_URL and ANTIBODY_TOKEN in the environment that launches codex.
+
+[features]
+hooks = true
+
+[[hooks.UserPromptSubmit]]
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = "antibody hook user-prompt --agent codex"
+timeout = 5
+
+[[hooks.SessionEnd]]
+[[hooks.SessionEnd.hooks]]
+type = "command"
+command = "antibody hook session-end --agent codex"
+timeout = 3
+
+[mcp_servers.antibody]
+url = "https://antibody.example.com/mcp"
+bearer_token_env_var = "ANTIBODY_TOKEN"

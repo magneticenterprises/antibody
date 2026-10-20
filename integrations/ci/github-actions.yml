@@ -1,0 +1,27 @@
+# Example job. Needs repository secrets ANTIBODY_URL, ANTIBODY_TOKEN, ANTIBODY_CI_SECRET
+# and a variable ANTIBODY_ORG. The antibody binary must be on PATH (build it with
+# `cargo install --path crates/antibody-cli --locked` or download your release artifact).
+# If you use the Antibody GitHub App webhook, you do not need this step.
+name: ci
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        shell: bash
+        run: ./scripts/test.sh 2>&1 | tee test.log
+      - name: Look up known solutions for the failure
+        if: failure()
+        env:
+          ANTIBODY_URL: ${{ secrets.ANTIBODY_URL }}
+          ANTIBODY_TOKEN: ${{ secrets.ANTIBODY_TOKEN }}
+          ANTIBODY_CI_SECRET: ${{ secrets.ANTIBODY_CI_SECRET }}
+          ANTIBODY_ORG: ${{ vars.ANTIBODY_ORG }}
+          ANTIBODY_REPOSITORY: ${{ github.repository }}
+        run: |
+          antibody ci report --check test --revision "$GITHUB_SHA" \
+            --excerpt-file test.log \
+            --url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true

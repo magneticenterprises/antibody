@@ -1,0 +1,26 @@
+[package]
+name = "antibody-integrations"
+description = "Git/CI webhook parsing, signature verification and agent transcript normalization for Antibody"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+antibody-core.workspace = true
+chrono.workspace = true
+hex.workspace = true
+hmac.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+utoipa.workspace = true
+
+[dev-dependencies]
+uuid.workspace = true
+
+[lints]
+workspace = true

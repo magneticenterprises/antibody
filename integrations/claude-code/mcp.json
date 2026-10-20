@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "antibody": {
+      "type": "http",
+      "url": "https://antibody.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ANTIBODY_TOKEN}"
+      }
+    }
+  }
+}

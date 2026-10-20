@@ -1,0 +1,80 @@
+# Antibody web tier: serves the static UI and reverse-proxies the Rust API.
+#
+# ANTIBODY_SITE_ADDRESS (default ":8080"):
+#   ":8080"                plain HTTP. Intended for localhost and trusted
+#                          private networks only.
+#   "antibody.example.com" a real domain. Caddy then obtains and renews a
+#                          certificate automatically, listens on 80 and 443,
+#                          redirects HTTP to HTTPS, and sends
+#                          X-Forwarded-Proto=https to the API. This is how
+#                          remote traffic is forced onto HTTPS. Publish ports
+#                          80 and 443 (see deploy/compose.tls.yaml) and set
+#                          ANTIBODY_PUBLIC_URL=https://antibody.example.com.
+#
+# The API refuses plain-HTTP requests from outside ANTIBODY_HTTP_TRUSTED_NETWORKS
+# unless X-Forwarded-Proto is https and ANTIBODY_TRUST_PROXY=true.
+#
+# Caddy overwrites any client-supplied X-Forwarded-* headers because no
+# trusted_proxies are configured. If another load balancer terminates TLS in
+# front of this Caddy, add `servers { trusted_proxies static <cidr> }` to the
+# global block so its forwarded headers are honoured.
+{
+	admin off
+}
+
+{$ANTIBODY_SITE_ADDRESS::8080} {
+	encode zstd gzip
+
+	# API and MCP: proxied to the Rust service. reverse_proxy sets
+	# X-Forwarded-For (client address), X-Forwarded-Proto (http or https) and
+	# X-Forwarded-Host itself, discarding client-supplied values. The API sets its own
+	# Cache-Control, nosniff, Referrer-Policy and X-Frame-Options headers.
+	@backend path /v1/* /mcp /mcp/*
+	handle @backend {
+		reverse_proxy api:8080 {
+			# MCP uses streamable HTTP; never buffer responses.
+			flush_interval -1
+		}
+	}
+
+	# Static single-page application.
+	handle {
+		root * /srv
+
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+			Strict-Transport-Security "max-age=31536000; includeSubDomains"
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "no-referrer"
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+			Cross-Origin-Opener-Policy "same-origin"
+			Cross-Origin-Resource-Policy "same-origin"
+			-Server
+		}
+
+		# Vite emits content-hashed files under /assets: cache for a year.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+		# index.html and any other non-hashed file must always revalidate so a
+		# new deployment is picked up immediately.
+		@shell not path /assets/*
+		header @shell Cache-Control "no-cache"
+
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Container-local listener used by the Docker healthcheck. It is not published
+# and answers only the API readiness probe.
+http://127.0.0.1:8081 {
+	bind 127.0.0.1
+	handle /v1/health/ready {
+		reverse_proxy api:8080
+	}
+	handle {
+		respond "not found" 404
+	}
+}

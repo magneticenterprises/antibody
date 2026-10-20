@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1.7
+# Antibody web UI: static React build served by Caddy (no Node at runtime).
+# Build from the repository root:
+#   docker build -f deploy/Dockerfile.web -t antibody-web:dev .
+
+FROM node:26-trixie-slim AS builder
+# Recent Node releases no longer bundle Corepack; install it explicitly.
+# pnpm itself is pinned by the "packageManager" field in apps/web/package.json.
+RUN npm install --global corepack@latest && corepack enable
+WORKDIR /repo
+
+# The generated API types are built from the committed OpenAPI contract.
+COPY openapi ./openapi
+
+WORKDIR /repo/apps/web
+COPY apps/web/package.json apps/web/pnpm-lock.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+COPY apps/web ./
+RUN pnpm build
+
+FROM caddy:2.11.7-alpine AS runtime
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=builder /repo/apps/web/dist /srv
+EXPOSE 8080
+# `caddy run` is the image default; the Caddyfile path above is also the default.

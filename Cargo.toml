@@ -1,0 +1,75 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "Apache-2.0"
+repository = "https://github.com/memogarcia/antibody"
+publish = false
+
+[workspace.dependencies]
+antibody-core = { path = "crates/antibody-core" }
+antibody-db = { path = "crates/antibody-db" }
+antibody-search = { path = "crates/antibody-search" }
+antibody-integrations = { path = "crates/antibody-integrations" }
+antibody-providers = { path = "crates/antibody-providers" }
+antibody-worker = { path = "crates/antibody-worker" }
+antibody-api = { path = "crates/antibody-api" }
+
+anyhow = "1.0.104"
+argon2 = "0.6.0"
+async-trait = "0.1.92"
+axum = { version = "0.8.9", features = ["macros"] }
+base64 = "0.23.1"
+bytes = "1"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde", "std"] }
+clap = { version = "4.6.7", features = ["derive", "env"] }
+futures = "0.3.34"
+globset = "0.4.20"
+governor = "0.10.4"
+hex = "0.4.3"
+hmac = "0.13.0"
+http = "1.5.0"
+http-body-util = "0.1.5"
+pgvector = { version = "0.4.2", features = ["sqlx"] }
+rand = "0.10.3"
+regex = "1.13.1"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls"] }
+rmcp = { version = "3.5.1", default-features = false, features = ["server", "macros", "schemars", "transport-streamable-http-server"] }
+schemars = { version = "1.2.3", features = ["uuid1", "chrono04"] }
+semver = "1.0.28"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "macros", "migrate", "uuid", "chrono", "json"] }
+subtle = "2.6.1"
+thiserror = "2.0.21"
+tokio = { version = "1.53.3", features = ["full"] }
+tokio-util = "0.7.20"
+tower = { version = "0.5.3", features = ["util", "timeout", "limit"] }
+tower-http = { version = "0.7.1", features = ["trace", "limit", "request-id", "timeout", "sensitive-headers", "set-header", "propagate-header"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+url = "2.5.8"
+utoipa = { version = "6.0.0", features = ["axum_extras", "chrono", "uuid", "preserve_order"] }
+uuid = { version = "1.28.0", features = ["v4", "v7", "serde"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+strip = "debuginfo"
+
+# Proc-macros and build scripts are loaded as dylibs at compile time; stripping
+# them produced malformed macOS dylibs ("mis-aligned LINKEDIT string pool").
+[profile.release.build-override]
+strip = false

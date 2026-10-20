@@ -1,0 +1,213 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_smoke:
+        description: "Also run the Docker Compose smoke test (slow: builds both images)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  commit-policy:
+    name: commit attribution policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5.0.0
+        with:
+          node-version: "26"
+      - run: node --test scripts/git-hooks/*.test.mjs
+      - run: node scripts/git-hooks/check-commit-message.mjs --history HEAD
+
+  dco:
+    name: dco sign-off
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+      - name: Check every commit has a Signed-off-by line
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            if ! git show -s --format=%B "$c" | grep -q '^Signed-off-by: .\+ <.\+@.\+>$'; then
+              echo "::error::commit $c has no Signed-off-by line (see CONTRIBUTING.md)"
+              missing=1
+            fi
+          done
+          exit $missing
+
+  rust:
+    name: rust (fmt, clippy, test)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18-trixie
+        env:
+          POSTGRES_USER: antibody
+          POSTGRES_PASSWORD: antibody
+          POSTGRES_DB: antibody
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U antibody -d antibody"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      # #[sqlx::test] creates one database per test from this connection.
+      DATABASE_URL: postgres://antibody:antibody@localhost:5432/antibody
+      # Each parallel test holds its own pool; service containers cannot raise
+      # max_connections, so bound parallelism instead.
+      RUST_TEST_THREADS: "6"
+    steps:
+      - uses: actions/checkout@v5.0.0
+      # rust-toolchain.toml pins the version and components (rustfmt, clippy).
+      - name: Install pinned toolchain
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2.8.0
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+
+  contract-drift:
+    name: contract drift (OpenAPI, MCP schemas)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - name: Install pinned toolchain
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2.8.0
+      - name: Build antibody-api
+        run: cargo build --locked -p antibody-api
+      - name: OpenAPI matches openapi/openapi.json
+        run: |
+          ./target/debug/antibody-api openapi > /tmp/openapi.json
+          diff -u openapi/openapi.json /tmp/openapi.json
+      - name: MCP tool schemas match openapi/mcp-tools.json
+        run: |
+          ./target/debug/antibody-api mcp-schema > /tmp/mcp-tools.json
+          diff -u openapi/mcp-tools.json /tmp/mcp-tools.json
+
+  web:
+    name: web (types, unit tests, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-node@v5.0.0
+        with:
+          node-version: "26"
+      # Node no longer bundles Corepack; pnpm is pinned by "packageManager".
+      - name: Enable pnpm
+        run: npm install --global corepack@latest && corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Generated client matches openapi/openapi.json
+        run: pnpm run check:api
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm test
+      - run: pnpm build
+
+  e2e:
+    name: e2e (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    # The Playwright harness resets its database and starts its own API/worker.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18-trixie
+        env:
+          POSTGRES_USER: antibody
+          POSTGRES_PASSWORD: antibody
+          POSTGRES_DB: antibody
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U antibody -d antibody"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - name: Check for Playwright config
+        id: pw
+        run: |
+          if [ -f apps/web/playwright.config.ts ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Install pinned toolchain
+        if: steps.pw.outputs.present == 'true'
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2.8.0
+        if: steps.pw.outputs.present == 'true'
+      - name: Build backend binaries for the Playwright harness
+        if: steps.pw.outputs.present == 'true'
+        run: cargo build --locked -p antibody-api -p antibody-worker
+      - name: Install database client for the harness
+        if: steps.pw.outputs.present == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - uses: actions/setup-node@v5.0.0
+        if: steps.pw.outputs.present == 'true'
+        with:
+          node-version: "26"
+      - name: Install web dependencies and browsers
+        if: steps.pw.outputs.present == 'true'
+        working-directory: apps/web
+        run: |
+          npm install --global corepack@latest && corepack enable
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Run Playwright
+        if: steps.pw.outputs.present == 'true'
+        working-directory: apps/web
+        shell: bash
+        env:
+          E2E_PGPORT: "5432"
+        run: pnpm e2e 2>&1 | tee e2e.log
+      - uses: actions/upload-artifact@v4.6.2
+        if: always() && steps.pw.outputs.present == 'true'
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            apps/web/e2e.log
+          if-no-files-found: ignore
+
+  compose-smoke:
+    name: compose smoke (A01, A16)
+    # Slow (builds both images); run manually or on main.
+    if: github.event_name == 'workflow_dispatch' && inputs.run_smoke || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - run: scripts/smoke.sh

@@ -1,0 +1,61 @@
+[package]
+name = "antibody-api"
+description = "Axum HTTP API and MCP server for Antibody"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "antibody-api"
+path = "src/main.rs"
+
+[dependencies]
+antibody-core.workspace = true
+antibody-db.workspace = true
+antibody-integrations.workspace = true
+antibody-providers.workspace = true
+antibody-search.workspace = true
+anyhow.workspace = true
+argon2.workspace = true
+axum.workspace = true
+base64.workspace = true
+bytes.workspace = true
+chrono.workspace = true
+clap.workspace = true
+futures.workspace = true
+globset.workspace = true
+governor.workspace = true
+hex.workspace = true
+http.workspace = true
+http-body-util.workspace = true
+rand.workspace = true
+rmcp.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+sqlx.workspace = true
+subtle.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+url.workspace = true
+utoipa.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+antibody-worker.workspace = true
+pgvector.workspace = true
+reqwest = { workspace = true, features = ["cookies"] }
+
+[lints]
+workspace = true

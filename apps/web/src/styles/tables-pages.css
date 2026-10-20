@@ -1,0 +1,151 @@
+/* ---------------------------------------------------------------- tables */
+
+.table-wrap {
+  position: relative; /* contain visually-hidden (absolute) children inside the scroller */
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+th {
+  font-weight: 600;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.cell--text {
+  min-width: 14rem;
+  max-width: 32rem;
+}
+
+.cell-error {
+  color: var(--bad);
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+}
+
+.row--untrusted td {
+  background: color-mix(in srgb, var(--warn-bg) 45%, transparent);
+}
+
+/* ---------------------------------------------------------------- transcript */
+
+.transcript {
+  margin-top: 1rem;
+}
+
+.transcript__messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.message {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0.6rem 0.8rem;
+}
+
+.message__role {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+
+.message--tool {
+  background: var(--surface-2);
+}
+
+/* ---------------------------------------------------------------- login */
+
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.login__card {
+  width: 100%;
+  max-width: 24rem;
+}
+
+.login__card h1 {
+  margin-bottom: 0.25rem;
+}
+
+.login__card .lede {
+  margin-bottom: 1.5rem;
+}
+
+/* ---------------------------------------------------------------- small screens */
+
+@media (max-width: 40rem) {
+  .site-header__inner {
+    gap: 0.5rem 1rem;
+  }
+
+  .account {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .main {
+    padding-top: 1.25rem;
+  }
+
+  .stat__hint {
+    max-width: 10rem;
+  }
+
+  .form--inline .field {
+    flex: 1 1 100%;
+  }
+
+  .form--inline .field--action {
+    margin-top: 0;
+  }
+
+  .secret-row {
+    flex-wrap: wrap;
+  }
+}
+
+.danger-zone {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--bad);
+  border-radius: var(--radius);
+}
+
+.danger-zone h3 {
+  margin-top: 0;
+  color: var(--bad);
+}

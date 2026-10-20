@@ -1,0 +1,17 @@
+# Public HTTPS override. Caddy obtains certificates automatically when
+# ANTIBODY_SITE_ADDRESS is a real DNS name that points at this host.
+#
+#   # deploy/.env
+#   ANTIBODY_SITE_ADDRESS=antibody.example.com
+#   ANTIBODY_PUBLIC_URL=https://antibody.example.com
+#
+#   docker compose -f deploy/compose.yaml -f deploy/compose.tls.yaml up -d --build
+#
+# Requires Docker Compose 2.24.4+ (the !override tag). Ports 80 and 443 must be
+# reachable from the internet for certificate issuance.
+services:
+  web:
+    ports: !override
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"

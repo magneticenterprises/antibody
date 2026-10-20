@@ -1,0 +1,39 @@
+[package]
+name = "antibody-worker"
+description = "Durable background workers for extraction, correlation, embeddings and retention"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "antibody-worker"
+path = "src/main.rs"
+
+[dependencies]
+antibody-core.workspace = true
+antibody-db.workspace = true
+antibody-integrations.workspace = true
+antibody-providers.workspace = true
+antibody-search.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+pgvector.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true
